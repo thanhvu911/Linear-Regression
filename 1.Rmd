@@ -1,0 +1,13 @@
+---
+title: '1'
+output: html_document
+date: "2025-08-26"
+---
+
+```{r}
+library(readr)
+Production <- read_delim("C:/mat374/Production.txt", 
+    delim = "\t", escape_double = FALSE, 
+    trim_ws = TRUE)
+View(Production)
+```

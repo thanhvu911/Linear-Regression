@@ -1,0 +1,35 @@
+---
+title: "quiz 1"
+output: html_document
+date: "2025-09-04"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+library(readr)
+copier <- read_csv("C:/mat374/copier.txt")
+```
+1. 
+```{r}
+copier_lm <- lm(Minutes ~ NCopiers, data = copier)
+summary(copier_lm)
+```
+The estimated regression equation is: Minutes = -0.58 + NCopiers * 15.04
+
+2.
+```{r}
+round(confint(copier_lm, level = 0.90),2)
+```
+With 90% confidence, the average service time is estimated to increase between 14.22 and 15.85 minutes for each additional ncopiers.
+
+3.
+```{r}
+t_stat <- (coef(copier_lm)[2] - 16) / summary(copier_lm)$coefficients[2, 2]
+p_value <- pt(t_stat, df = copier_lm$df.residual, lower.tail = TRUE)
+p_value
+```
+Because p_value is 0.026 smaller than 0.05. Reject H0: average service time increases by less than 16 minutes per copier. 

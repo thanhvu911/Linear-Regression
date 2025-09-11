@@ -1,0 +1,41 @@
+---
+title: "HW1-Thanh Vu"
+output:
+  html_document: default
+  pdf_document: default
+date: "2025-08-26"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r playbill}
+library(readr)
+playbill <- read_csv("C:/mat374/playbill.csv")
+```
+1. 
+```{r, echo=FALSE}
+prod_week <- lm(CurrentWeek ~ LastWeek, data = playbill)
+
+# Show model summary
+summary(prod_week)
+```
+The estimated regression equation is CurrentWeek = 6805 + LastWeek * 0.98
+
+2.
+```{r}
+
+library(ggplot2)
+w <- ggplot(data=playbill, aes(x=LastWeek, y= CurrentWeek)) +
+  geom_point() +
+  geom_smooth(method="lm", se=F, color = "darkblue")
+
+w + ggtitle("Broadway ticket sales")
+```
+3.
+```{r}
+predict(prod_week,newdata = data.frame((LastWeek=c(500000))))
+```
+The predicted value is 497845.6 it's the result when we plug 500000 into regression equation on 1.The model’s residual standard error is 18,010, which is the typical size of the week-to-week deviations of actual revenue from the regression line.
