@@ -1,0 +1,118 @@
+---
+title: "exam1"
+output: html_document
+date: "2025-10-23"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(readr)
+library(ggplot2)
+library(car)
+library(dplyr)
+
+```
+
+1.
+
+a,
+```{r}
+birthsmokers <- read_csv("C:/mat374/birthsmokers.csv")
+birthsmokers$SmokeBinary <- ifelse(birthsmokers$Smoke == "Smoker", 1, 0)
+
+birthsmokers_lm <- lm(Wgt ~ Gest + SmokeBinary, data = birthsmokers)
+summary(birthsmokers_lm)
+
+```
+For non-smoking mothers:
+Birth Weight = -2389.57 + 143.10 x Gestation
+For smoking mothers:
+Birth Weight = -2634.12 + 143.10 x Gestation
+
+
+b,
+```{r}
+cat(summary(birthsmokers_lm)$coefficients["SmokeBinary", 4])
+```
+
+H0: There is no significant difference in mean birth weight between babies born to smoking and non-smoking mothers after accounting for gestation length
+Ha: There is a significant difference in mean birth weight between babies born to smoking and non-smoking mothers after accounting for gestation length
+
+p-value: 2.576964e-06 < 0.001
+Reject the null hypothesis. There is significant evidence that smoking status affects birth weight after accounting for gestation length.
+
+
+2.
+
+a,
+```{r}
+library(readr)
+Retailer <- read_csv("Retailer.csv")
+Retailer_lm_no_int <- lm(LaborHours ~ Cases + IndirectCostPct + Holiday, data = Retailer)
+summary(Retailer_lm_no_int)
+```
+The estimated regression equation is:
+LaborHours = 4384 + 0.0042 x Cases - 151.3 x IndirectCostPct + 3515 x Holiday
+
+b,
+```{r}
+library(ggplot2)
+Retailer$fit <- fitted(Retailer_lm_no_int)
+ggplot(Retailer, aes(x = IndirectCostPct, y = LaborHours, color = as.factor(Holiday))) +
+  geom_point(alpha = 0.6) +
+  geom_line(aes(y = fit, linetype = as.factor(Holiday))) +
+  theme_minimal() +
+  scale_color_brewer(palette = "Set1", labels = c("Non-Holiday", "Holiday")) +
+  scale_linetype_manual(values = c("dotted", "dashed"), labels = c("Non-Holiday", "Holiday"))
+
+```
+
+The lines appear to fit the data well for both holiday and non-holiday weeks. The parallel lines capture the upward shift in labor hours during holiday weeks.
+
+c,
+
+```{r}
+Retailer_lm_full <- lm(LaborHours ~ Cases * IndirectCostPct * Holiday, data = Retailer)
+summary(Retailer_lm_full)
+
+Retailer_lm_reduced <- lm(LaborHours ~ Cases + IndirectCostPct + Holiday + Cases:IndirectCostPct + Cases:Holiday + IndirectCostPct:Holiday, data = Retailer)
+
+anova(Retailer_lm_reduced, Retailer_lm_full) 
+summary(Retailer_lm_reduced)
+anova(Retailer_lm_no_int, Retailer_lm_full)
+```
+The full model with all interactions was fitted, but the three-way interaction was nonsignificant (p = 0.920 > 0.10). The two-way interactions were also nonsignificant (p-values: 0.811, 0.706, 0.239 > 0.10). An overall F-test for adding interactions to the no-interaction model gave p = 0.324 > 0.10. Thus, the final reduced model is: Labor Hours ~ Cases + IndirectCostPct + Holiday
+
+
+d,
+```{r}
+library(car)
+vif(Retailer_lm_no_int, type = "predictor")
+```
+
+The VIF values are approximately 1.00 for const, 1.05 for Cases, 1.05 for IndirectCostPct, and 1.00 for Holiday. No predictors exhibit problematic collinearity (all VIF < 5).
+
+e,
+```{r}
+library(ggfortify)
+library(nortest)
+autoplot(Retailer_lm_no_int)
+
+res <- residuals(Retailer_lm_no_int)
+shapiro.test(res)
+ad.test(res)
+lillie.test(res)
+```
+The assumptions appear reasonable. The residuals vs. fitted plot shows no obvious patterns, supporting linearity and equal variances. The normal Q-Q plot indicates approximate normality, with Shapiro-Wilk p-value = 0.679 > 0.05, Anderson-Darling statistic = 0.297, not rejecting normality.
+
+f,
+```{r}
+predict(Retailer_lm_no_int, newdata = data.frame(Cases = 250000, IndirectCostPct = 5, Holiday = 0))
+predict(Retailer_lm_no_int, newdata = data.frame(Cases = 300000, IndirectCostPct = 4, Holiday = 1))
+```
+The predicted total labor hours for a non-holiday week with 250,000 cases shipped and 5% indirect costs is approximately 4671.16.
+
+The predicted total labor hours for a holiday week with 300,000 cases shipped and 4% indirect costs is approximately 8545.9.

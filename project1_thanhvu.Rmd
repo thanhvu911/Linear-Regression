@@ -1,0 +1,175 @@
+---
+title: "project1_thanhvu"
+output: html_document
+date: "2025-10-16"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+https://data.pa.gov/Covid-19/COVID-19-Vaccinations-by-Age-Group-Current-County-/niuh-2xe3/data_preview
+
+How well do vaccination rates in younger age groups (20-24, 25-29, 30-34) predict vaccination rates in the 35-39 age group across Pennsylvania counties?
+
+```{r}
+library(readr)
+library(ggplot2)
+library(GGally)
+library(car)
+library(tidyverse)
+library(ggfortify)
+library(nortest)
+```
+
+```{r}
+covid_data <- read_csv("C:/mat374/COVID-19_Vaccinations_by_Age_Group_Current_County_Health_20251015.csv")
+```
+
+```{r}
+# Create total young vaccination variable
+covid_clean <- covid_data %>%
+  rename(
+    County = `County Name`,
+    Age_20_24 = `Partially Covered Age Group 20-24`,
+    Age_25_29 = `Partially Covered Age Group 25-29`, 
+    Age_30_34 = `Partially Covered Age Group 30-34`,
+    Age_35_39 = `Partially Covered Age Group 35-39`
+  )
+```
+
+Scatterplot matrix to examine relationships
+```{r}
+ggpairs(covid_clean[, c("Age_20_24", "Age_25_29", "Age_30_34", "Age_35_39")]) +
+  labs(title = "Scatterplot Matrix of Vaccination Rates by Age Group")
+```
+
+
+Multiple Regression Model
+
+Model Fitting
+```{r}
+covid_lm <- lm(Age_35_39 ~ Age_20_24 + Age_25_29 + Age_30_34, data = covid_clean)
+summary(covid_lm)
+```
+Model Summary
+R-squared: 0.9984 (99.84% of variance explained)
+
+F-statistic: 13340 (p < 0.001)
+
+Residual standard error: 115.5
+
+Coefficient Interpretation
+Age_20_24: Not significant (p = 0.120)
+
+Age_25_29: Strong negative effect (β = -1.256, p < 0.001)
+
+Age_30_34: Strong positive effect (β = 2.091, p < 0.001)
+
+
+Diagnostic Plots
+```{r}
+autoplot(covid_lm) +
+  labs(title = "Diagnostic Plots for COVID-19 Vaccination Model")
+
+avPlots(covid_lm, pch = 16, main = "Added Variable Plots")
+```
+
+Residuals vs Fitted: Shows some curvature and potential heteroscedasticity, suggesting the linearity assumption may be violated
+
+Normal Q-Q Plot: Residuals deviate from normality, especially in the tails
+
+Scale-Location Plot: Slight funnel pattern indicates potential non-constant variance
+
+Residuals vs Leverage: No extremely influential points detected
+
+
+Standardized Residuals vs Predictors
+```{r}
+diag_df <- covid_clean %>%
+  mutate(
+    fitted = fitted(covid_lm),
+    std_resid = rstandard(covid_lm)
+  )
+
+diag_df %>%
+  pivot_longer(cols = c(Age_20_24, Age_25_29, Age_30_34, fitted), 
+               names_to = "variable", values_to = "xval") %>%
+  ggplot(aes(x = xval, y = std_resid)) +
+  geom_point(alpha = 0.6) +
+  geom_hline(yintercept = 0, color = "hotpink2", linetype = "dashed") +
+  facet_wrap(~ variable, scales = "free_x") +
+  labs(x = "", y = "Standardized Residuals", 
+       title = "Standardized Residuals vs Predictors and Fitted Values") +
+  theme_minimal()
+```
+
+Formal Normality Tests
+```{r}
+res <- residuals(covid_lm)
+
+ad_test <- ad.test(res)
+ad_test
+
+shapiro_test <- shapiro.test(res)
+shapiro_test
+
+lillie_test <- lillie.test(res)
+lillie_test
+```
+
+
+Formal Normality Test Results
+All three formal normality tests provide strong evidence against the normality assumption:
+
+Anderson-Darling Test: A = 2.9245, p-value = 1.981e-07
+
+Shapiro-Wilk Test: W = 0.83494, p-value = 3.669e-07
+
+Lilliefors Test: D = 0.15084, p-value = 0.0006514
+
+All p-values are well below 0.05, providing conclusive evidence that the residuals do not follow a normal distribution.
+
+
+
+Make prediction
+```{r}
+example_county <- data.frame(
+  Age_20_24 = 1000,
+  Age_25_29 = 1200, 
+  Age_30_34 = 1100
+)
+pred_interval <- predict(covid_lm, newdata = example_county, interval = "prediction")
+pred_interval
+```
+For a county with 1,000 (20-24), 1,200 (25-29), and 1,100 (30-34) vaccinations, predicted 35-39 vaccination count = 873.18 (95% PI: 639.54 to 1106.82)
+
+
+Research Question & Dataset
+Analyzed how younger age group vaccination rates predict 35-39 age group rates across 67 Pennsylvania counties using COVID-19 vaccination data.
+
+Variables & Model
+Response: Age_35_39 vaccination count
+Predictors: Age_20_24, Age_25_29, Age_30_34 vaccination counts
+Model: Multiple linear regression
+
+Key Findings
+High R-squared (99.84%) but severe assumption violations
+
+Age_30_34 strongest positive predictor
+
+Age_25_29 shows counterintuitive negative relationship
+
+Age_20_24 not significant
+
+Model Limitations
+Linearity violated (U-shaped residuals)
+
+Non-normal errors
+
+Non-constant variance
+
+Counterintuitive coefficient for Age_25_29
+
+Conclusion
+Despite high R-squared, the model violates critical assumptions and should not be used for inference.Consider alternative methods like data transformations

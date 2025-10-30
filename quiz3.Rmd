@@ -1,0 +1,54 @@
+---
+title: "quiz3"
+output: html_document
+date: "2025-10-02"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r cars}
+library(readr)
+library(ggplot2)
+library(ggfortify)
+library(MASS)
+Copper <- read_csv("C:/mat374/Copper.csv")
+```
+
+1. 
+```{r}
+ggplot(data = Copper, aes(x = Sulfur, y = Tension)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE)
+
+copper_lm <- lm(Tension ~ Sulfur, data = Copper)
+summary(copper_lm)
+
+autoplot(copper_lm, label.repel = TRUE, label.size = 3)
+```
+
+Residuals vs Fitted: Clear curvature suggests the linearity assumption is violated.
+Scale-Location: Show increasing spread with fitted values.
+Normal Q-Q: deviations at the tails, indicating the errors is not normally distributed.
+Residuals vs Leverage: No extreme outliers, but some high leverage points are present.
+Linearity, equal variances, and normality are violated
+
+2.
+```{r}
+copper_lm_sqrt <- lm(Tension ~ I(sqrt(Sulfur)), data = Copper)
+summary(copper_lm_sqrt)
+
+autoplot(copper_lm_sqrt, label.repel = TRUE, label.size = 3)
+```
+
+The estimated regression equation is: Tension = 123.17 + 742.35 * sqrt(Sulfur) + e.
+
+3.
+```{r}
+pred_01 <- predict(copper_lm_sqrt, newdata = data.frame(Sulfur = 0.1))
+pred_02 <- predict(copper_lm_sqrt, newdata = data.frame(Sulfur = 0.2))
+pred_02 - pred_01
+```
+

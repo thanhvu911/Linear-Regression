@@ -1,0 +1,118 @@
+---
+title: "project1"
+output: html_document
+date: "2025-10-13"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+https://data.pa.gov/Covid-19/COVID-19-Vaccinations-by-Zip-Code-by-Coverage-Curr/d63n-ygar/data_preview
+
+Research Question
+
+Question: How well do the number of partially covered individuals and the region (East vs. West Pennsylvania) explain the number of fully covered individuals across zip codes? "East" is defined as 1 if Patient Zip Code >= 17000, 0 otherwise. And add interaction column (Interaction = `Partially Covered` * East)
+
+
+```{r}
+library(readr)
+library(tidyverse)
+library(car)
+library(ggfortify)
+library(ggplot2)
+library(GGally)
+```
+
+```{r}
+# Load and clean data
+vacc_data <- read_csv("C:/mat374/COVID-19_Vaccinations_by_Zip_Code_by_Coverage_Current_Health_20251013.csv") %>%
+  drop_na(`Partially Covered`, `Fully Covered`)
+
+# Create region variable and interaction term
+vacc_data <- vacc_data %>%
+  mutate(
+    East = ifelse(`Patient Zip Code` >= 17000, 1, 0),
+    Interaction = `Partially Covered` * East
+  )
+
+# Exploratory data analysis
+ggpairs(vacc_data[, c("Fully Covered", "Partially Covered")]) +
+  labs(title = "Pairwise Relationships between Variables")
+```
+
+Multiple Regression Model
+
+Fit the Full Model with Interaction
+
+```{r}
+vacc_lm_full <- lm(`Fully Covered` ~ `Partially Covered` + East + Interaction, data = vacc_data)
+summary(vacc_lm_full)
+```
+Compare with reduced model without interaction
+
+```{r}
+vacc_lm_reduced <- lm(`Fully Covered` ~ `Partially Covered` + East, data = vacc_data)
+anova(vacc_lm_reduced, vacc_lm_full)
+```
+Model Diagnostics
+
+Diagnostic Plots
+```{r}
+autoplot(vacc_lm_full) +
+  labs(title = "Diagnostic Plots for Multiple Regression Model")
+```
+
+Added Variable Plots
+```{r}
+avPlots(vacc_lm_full, pch = 16, main = "Added Variable Plots")
+```
+
+Standardized Residuals Analysis
+```{r}
+diag_df <- vacc_data %>%
+  mutate(
+    fitted = fitted(vacc_lm_full),
+    std_resid = rstandard(vacc_lm_full)
+  )
+
+# Plot std residuals vs each predictor and fitted
+diag_df %>%
+  pivot_longer(cols = c(`Partially Covered`, East, fitted), 
+               names_to = "variable", values_to = "xval") %>%
+  ggplot(aes(x = xval, y = std_resid)) +
+  geom_point(alpha = 0.6) +
+  geom_hline(yintercept = 0, color = "hotpink2", linetype = "dashed") +
+  facet_wrap(~ variable, scales = "free_x") +
+  labs(x = "", y = "Standardized Residuals", 
+       title = "Standardized Residuals vs Predictors and Fitted Values")
+```
+Visualization of Fitted Model
+```{r}
+vacc_data$fit <- fitted(vacc_lm_full)
+ggplot(vacc_data, aes(x = `Partially Covered`, y = `Fully Covered`, color = factor(East))) +
+  geom_point(alpha = 0.3) +
+  geom_line(aes(y = fit, linetype = factor(East)), size = 1) +
+  labs(x = "Partially Covered", y = "Fully Covered", 
+       color = "Region (East=1, West=0)",
+       linetype = "Region (East=1, West=0)",
+       title = "Fitted Regression Lines by Region") +
+  theme_minimal()
+```
+
+```{r}
+# Predictions
+# New data: Partial=100, West (East=0)
+new_west <- data.frame(`Partially Covered` = 100, East = 0, Interaction = 0)
+
+# Prediction with 95% prediction interval
+predict(vacc_lm, newdata = new_west, interval = "prediction")
+
+# New data: Partial=100, East (East=1)
+new_east <- data.frame(`Partially Covered` = 100, East = 1, Interaction = 100)
+predict(vacc_lm, newdata = new_east, interval = "prediction")
+
+```
+
+
+
